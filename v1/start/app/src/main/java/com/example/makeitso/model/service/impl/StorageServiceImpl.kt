@@ -22,13 +22,11 @@ import com.example.makeitso.model.service.StorageService
 import com.example.makeitso.model.service.trace
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.dataObjects
-import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 class StorageServiceImpl
 @Inject
@@ -37,10 +35,13 @@ constructor(private val firestore: FirebaseFirestore, private val auth: AccountS
 
   @OptIn(ExperimentalCoroutinesApi::class)
   override val tasks: Flow<List<Task>>
-    get() = emptyFlow()
+    get() =
+      auth.currentUser.flatMapLatest { user ->
+        firestore.collection(TASK_COLLECTION).whereEqualTo(USER_ID_FIELD, user.id).dataObjects()
+      }
 
   override suspend fun getTask(taskId: String): Task? =
-    firestore.collection(TASK_COLLECTION).document(taskId).get().await().toObject()
+    firestore.collection(TASK_COLLECTION).document(taskId).get().await().toObject(Task::class.java)
 
   override suspend fun save(task: Task): String =
     trace(SAVE_TASK_TRACE) {
